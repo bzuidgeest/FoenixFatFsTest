@@ -1,0 +1,584 @@
+  Fri Apr 17 2020 19:59                                                                                                Page 1
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Code"
+
+                                             ***************************************
+                                             **      WDC 65C816 Macro Assembler   **
+                                             **                                   **
+                                             **     Version 3.49.1- Feb  6 2006    **
+                                             ***************************************
+
+     1                        ; File: WDC_CStartup_816.asm
+     2                        ; 05/14/2004
+     3                        
+     4                             PW 128         ;Page Width (# of char/line) 
+     5                             PL 60          ;Page Length for HP Laser
+     6                             INCLIST ON     ;Add Include files in Listing
+     7                        
+     8                        				;*********************************************
+     9                        				;Test for Valid Processor defined in -D option
+    10                        				;*********************************************
+    11                        	IF	USING_265
+    12                        	ELSEIF	USING_816
+    13                        	ELSEIF	USING_CDC16F 
+    14                        	ELSE
+    15                        		EXIT         "Not Valid Processor: Use -DUSING_816, etc. ! ! ! ! ! ! ! ! ! ! ! !"
+    16                        	ENDIF
+    17                        
+    18                        
+    19                        				;*********************************************
+    20                        				;Test for Valid 'Model' type defined in -D option
+    21                        				;*********************************************
+    22                        	IF	SMALL
+    23                        	ELSEIF	MEDIUM
+    24                        	ELSEIF	COMPACT
+    25                        	ELSEIF	LARGE
+    26                        	ELSE
+    27                        		EXIT         "Not Valid 'Model' type - SMALL, MEDIUM, COMPACT, or LARGE: Use -DSMALL, et
+                    c. ! ! ! ! ! ! ! ! ! ! ! !"
+    28                        	ENDIF
+    29                        
+    30                            title  "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    31                        
+    32                        
+    33                        ; bgnpkhdr
+    34                        ;***************************************************************************
+    35                        ;  FILE_NAME: WDC_CStartup_816.asm
+    36                        ;
+    37                        ;  DATA_RIGHTS: Western Design Center and R & C Services Proprietary
+    38                        ;               Copyright(C) 1980-2003
+    39                        ;               All rights reserved. Reproduction in any manner, 
+    40                        ;               in whole or in part, is strictly prohibited without
+    41                        ;               the prior written approval of R & C Services or 
+    42                        ;               Western Design Center.
+    43                        ;
+    44                        ;               Information contained in this publication regarding
+    45                        ;               device applications and the like is intended through
+    46                        ;               suggestion only and may be superseded by updates.  
+    47                        ;               It is your responsibility to ensure that your application
+    48                        ;               meets with your specifications.  No representation or
+  Fri Apr 17 2020 19:59                                                                                                Page 2
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Code"
+
+    49                        ;               warranty is given and no liability is assumed by 
+    50                        ;               Western Design Center, Inc. with respect to the accuracy
+    51                        ;               or use of such information, or infringement of patents
+    52                        ;               or other intellectual property rights arising from such
+    53                        ;               use or otherwise.  Use of Western Design Center's products
+    54                        ;               as critical components in life support systems is not
+    55                        ;               authorized except with express written approval by
+    56                        ;               Western Design Center, Inc.'s.  No licenses are conveyed,
+    57                        ;               implicitly or otherwise, under any intellectual property rights.
+    58                        ;
+    59                        ;
+    60                        ;
+    61                        ;  TITLE: WDC_CStartup_816
+    62                        ;
+    63                        ;  DESCRIPTION: This File describes the WDC SDS General purpose ROM startup code.
+    64                        ;
+    65                        ;                Program Flow
+    66                        ;
+    67                        ;                First we make sure we are in native mode.
+    68                        ;                Then we set up the stack pointer.
+    69                        ;                Then we set the data bank register.
+    70                        ;                Then we copy the initialized data.
+    71                        ;                Then we clear out the uninitialized data.
+    72                        ;                Then we call main.
+    73                        ;
+    74                        ;  DEFINED FUNCTIONS:
+    75                        ;          Undefined_IRQ
+    76                        ;                   - Process a Bad Interrupt Vector - send code & Hang!
+    77                        ;
+    78                        ;
+    79                        ;  SPECIAL_CONSIDERATIONS:
+    80                        ;
+    81                        ;
+    82                        ;  SHARED_DATA:
+    83                        ;          None
+    84                        ;
+    85                        ;  GLOBAL_MODULES:
+    86                        ;          None
+    87                        ;
+    88                        ;  LOCAL_MODULES:
+    89                        ;          See above in "DEFINED FUNCTIONS"
+    90                        ;
+    91                        ;  AUTHOR: Jim Goodnow II
+    92                        ;
+    93                        ;  CREATION DATE: March 11,1997
+    94                        ;
+    95                        ;  REVISION HISTORY
+    96                        ;     Name           Date         Description
+    97                        ;     ------------   ----------   ------------------------------------------------
+    98                        ;     R. Greenthal   10/07/2003   1.01 Initial
+    99                        ;
+   100                        ;
+   101                        ;
+   102                        ; NOTE:
+   103                        ;    Change the lines for each version - current version is 1.01
+  Fri Apr 17 2020 19:59                                                                                                Page 3
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Code"
+
+   104                        ;    See - 
+   105                        ;         title  "WDC 'C' Startup Program V 1.01 for Large Model W65C816 - WDC_CStartup_816.asm"
+   106                        ;
+   107                        ;
+   108                        ;***************************************************************************
+   109                        ;endpkhdr
+   110                        
+   111                        
+   112                        ;***************************************************************************
+   113                        ;                             Include Files
+   114                        ;***************************************************************************
+   115                        ;None
+   116                        
+   117                        ; Set 8-bit accumulator
+   118                        setas   .macro
+   119                                SEP #$20        ; set A short 
+   120                                LONGA OFF
+   121                                .endm
+   122                                        
+   123                        ; Set 16-bit accumulator
+   124                        setal   .macro
+   125                                REP #$20        ; set A long 
+   126                                LONGA ON
+   127                                .endm
+   128                        
+   129                        ;***************************************************************************
+   130                        ;                              Global Modules
+   131                        ;***************************************************************************
+   132                        ;None
+   133                        
+   134                        ;***************************************************************************
+   135                        ;                              External Modules
+   136                        ;***************************************************************************
+   137                        ;None
+   138                        
+   139                        ;***************************************************************************
+   140                        ;                              External Variables
+   141                        ;***************************************************************************
+   142                        ;None
+   143                        
+   144                        
+   145                        ;***************************************************************************
+   146                        ;                               Local Constants
+   147                        ;***************************************************************************
+   148                        ;
+   149                        
+   150                        
+   151                        ;	.page
+   152                        
+   153                        ;***************************************************************************
+   154                        ;                          RAM Section
+   155                        ;***************************************************************************
+   156                        ;   
+   157                        
+   158                        
+  Fri Apr 17 2020 19:59                                                                                                Page 4
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Code"
+
+   159                        
+   160                                sttl "WDC_CStartup_816 Code"
+   161                        	.page
+   162                        
+  Fri Apr 17 2020 19:59                                                                                                Page 5
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Code"
+
+   163                        ;***************************************************************************
+   164                        ;***************************************************************************
+   165                        ;                    WDC_CStartup_816 Code Section
+   166                        ;***************************************************************************
+   167                        ;***************************************************************************
+   168                        
+   169                        ****************************************************************
+   170                        *                                                              *
+   171                        *   Define a special section in case most of the               *
+   172                        *      code is not in bank 0.                                  *
+   173                        *                                                              *
+   174                        ****************************************************************
+   175                        ;           Large   Model Function Calls use module Function_Name  and xdef ~~Function_Name
+   176                        
+   177             0000EF00   STACK   EQU   $EF00     ;CHANGE THIS FOR YOUR SYSTEM
+   178                        
+   179                        STARTUP SECTION OFFSET $7D00
+   180                        
+   181                        ~~START:
+   182                        
+   183                        START:
+   184 00:7D00: 78           	SEI
+   185 00:7D01: 18                   CLC                ;clear carry
+   186 00:7D02: FB                   XCE                ;clear emulation-Now in Native 16 bit Mode
+   187 00:7D03: C2 38                REP   #$38         ;16 bit registers and Clear Decimal mode
+   188                                LONGI ON
+   189                                LONGA ON
+   190 00:7D05: A9 00 EF             LDA   #STACK       ;get the stack address
+   191 00:7D08: 1B                   TCS                ;and set the stack to it
+   192                        
+   193                        ****************************************************************
+   194                        *                                                              *
+   195                        *   Set up the data bank register. We assume that the data     *
+   196                        *       section is where we want to point at.                  *
+   197                        *                                                              *
+   198                        ****************************************************************
+   199                        
+   200 00:7D09: E2 20                SEP   #$20         ;8 bit accum
+   201                                LONGA OFF
+   202                        
+   203 00:7D0B: A9 xx                LDA   #^_BEG_DATA  ;get bank of data
+   204 00:7D0D: 48                   PHA
+   205 00:7D0E: AB                   PLB                ;set data bank register
+   206 00:7D0F: C2 20                REP   #$20         ;back to 16 bit mode
+   207                                LONGA ON
+   208                        
+   209                        ****************************************************************
+   210                        *                                                              *
+   211                        *    Next, we want to copy the initialized data from           *
+   212                        *      ROM to RAM.                                             *
+   213                        *                                                              *
+   214                        ****************************************************************
+   215                        
+   216 00:7D11: A9 xx xx             LDA   #_END_DATA-_BEG_DATA ;number of bytes to copy
+   217 00:7D14: F0 0A                BEQ   SKIP         ;if none, just skip
+  Fri Apr 17 2020 19:59                                                                                                Page 6
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Code"
+
+   218 00:7D16: 3A                   DEC   A            ;less one for MVN instruction
+   219 00:7D17: A2 xx xx             LDX   #<_ROM_BEG_DATA ;get source into X
+   220 00:7D1A: A0 xx xx             LDY   #<_BEG_DATA  ;get dest into Y
+   221 00:7D1D: 54 xx xx             MVN   #^_ROM_BEG_DATA,#^_BEG_DATA ;copy bytes
+   222                        SKIP:
+   223                        
+   224                        ****************************************************************
+   225                        *                                                              *
+   226                        *   Now, clear out the uninitialized data area.                *
+   227                        *    We assume that it is in the same bank as DATA.            *
+   228                        *                                                              *
+   229                        ****************************************************************
+   230                        
+   231 00:7D20: A2 xx xx             LDX   #_END_UDATA-_BEG_UDATA  ;get number of bytes to clear
+   232 00:7D23: F0 11                BEQ   DONE         ;nothing to do
+   233 00:7D25: A9 00 00             LDA   #0           ;get a zero for storing
+   234 00:7D28: E2 20                SEP   #$20         ;do byte at a time
+   235 00:7D2A: A0 xx xx             LDY   #_BEG_UDATA  ;get beginning of zeros
+   236                        
+   237 00:7D2D: 99 00 00     LOOP    STA   |0,Y         ;clear memory
+   238 00:7D30: C8                   INY                ;bump pointer
+   239 00:7D31: CA                   DEX                ;decrement count
+   240 00:7D32: D0 F9                BNE   LOOP         ;continue till done
+   241 00:7D34: C2 20                REP   #$20         ;16 bit memory reg
+   242                        DONE:
+   243                        
+   244                        ****************************************************************
+   245                        *                                                              *
+   246                        *   Finally, transfer control to the real program.             *
+   247                        *                                                              *
+   248                        ****************************************************************
+   249                        ;           Small   Model Function Calls use module Function_Name  and xdef __Function_Name
+   250                        ;           Medium  Model Function Calls use module Function_Name  and xdef ~_Function_Name
+   251                        ;           Large   Model Function Calls use module Function_Name  and xdef ~~Function_Name
+   252                        ;           Compact Model Function Calls use module Function_Name  and xdef _~Function_Name	
+                    	
+   253                        		
+   254 00:7D36: EA           		NOP
+   255 00:7D37: EA           		NOP
+   256                        
+   257                        		XREF  ~~main      ;change MYSTART to yours
+   258 00:7D38: 22 xx xx xx          JSL   ~~main      ;long jump in case not bank 0
+   259                        
+   260                        	XDEF ~~_exit
+   261                        ~~_exit:
+   262 00:7D3C: 00 00                BRK
+   263                        
+   264                        
+   265                        
+   266                        
+   267                                sttl "WDC_CStartup_816 IRQ - Interrupt Handler Code"
+   268                        	.page
+   269                        
+  Fri Apr 17 2020 19:59                                                                                                Page 7
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 IRQ - Interrupt Handler Code"
+
+   270                        ;***************************************************************
+   271                        ;                                                              *
+   272                        ;   Example of transfering control to the real Interrupt       *
+   273                        ;    Handler written in 'C'. Note: save all the registers      *
+   274                        ;                                                              *
+   275                        ;***************************************************************
+   276                        		XDEF	IRQ
+   277                        
+   278                        IRQ:	
+   279                        		
+   280                        		setal 	
++  280 00:7D3E: C2 20                REP #$20        ; set A long 
++  280                                LONGA ON
+   281                        		;Example of needing to read/write to data in another data bank
+   282                        
+   283 00:7D40: 8B           		phb		; save Data Bank
+   284 00:7D41: 0B           		phd		; save Direct Page Register
+   285 00:7D42: 48           		pha
+   286 00:7D43: DA           		phx
+   287 00:7D44: 5A           		phy
+   288                        
+   289                        		setas
++  289 00:7D45: E2 20                SEP #$20        ; set A short 
++  289                                LONGA OFF
+   290                        
+   291                        		;LDA #'A'
+   292                        		;STA >$AFA000
+   293                        
+   294                        		setal
++  294 00:7D47: C2 20                REP #$20        ; set A long 
++  294                                LONGA ON
+   295                        		XREF	~~IRQHandler
+   296 00:7D49: 22 xx xx xx  		jsl		~~IRQHandler
+   297                        
+   298                        		;setas
+   299                        		;LDA #'B'
+   300                        		;STA >$AFA000
+   301                        
+   302                        		
+   303                        		setal
++  303 00:7D4D: C2 20                REP #$20        ; set A long 
++  303                                LONGA ON
+   304                        		
+   305 00:7D4F: 7A           		ply
+   306 00:7D50: FA           		plx
+   307 00:7D51: 68           		pla
+   308 00:7D52: 2B           		pld		; restore Direct Page Reg
+   309 00:7D53: AB           		plb		; Restore Data Bank
+   310                        
+   311                        
+   312                        		
+   313 00:7D54: 40           		RTI
+   314                        
+   315                        
+   316                        NMI:
+  Fri Apr 17 2020 19:59                                                                                                Page 8
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 IRQ - Interrupt Handler Code"
+
+   317 00:7D55: 40           		RTI
+   318                        
+   319                        
+   320                        BRK:	
+   321                        
+   322                        		setal 	
++  322 00:7D56: C2 20                REP #$20        ; set A long 
++  322                                LONGA ON
+   323                        		;Example of needing to read/write to data in another data bank
+   324                        
+   325 00:7D58: 8B           		phb		; save Data Bank
+   326 00:7D59: 0B           		phd		; save Direct Page Register
+   327 00:7D5A: 48           		pha
+   328 00:7D5B: DA           		phx
+   329 00:7D5C: 5A           		phy
+   330                        
+   331                        		setas
++  331 00:7D5D: E2 20                SEP #$20        ; set A short 
++  331                                LONGA OFF
+   332                        
+   333                        		setal
++  333 00:7D5F: C2 20                REP #$20        ; set A long 
++  333                                LONGA ON
+   334                        		XREF	~~BRKHandler
+   335 00:7D61: 22 xx xx xx  		jsl		~~BRKHandler
+   336                        
+   337                        		setal
++  337 00:7D65: C2 20                REP #$20        ; set A long 
++  337                                LONGA ON
+   338                        		
+   339 00:7D67: 7A           		ply
+   340 00:7D68: FA           		plx
+   341 00:7D69: 68           		pla
+   342 00:7D6A: 2B           		pld		; restore Direct Page Reg
+   343 00:7D6B: AB           		plb		; Restore Data Bank
+   344                        
+   345 00:7D6C: 40           		RTI
+   346                        		
+   347                        COP:	
+   348                        
+   349                        		setal 	
++  349 00:7D6D: C2 20                REP #$20        ; set A long 
++  349                                LONGA ON
+   350                        		;Example of needing to read/write to data in another data bank
+   351                        
+   352 00:7D6F: 8B           		phb		; save Data Bank
+   353 00:7D70: 0B           		phd		; save Direct Page Register
+   354 00:7D71: 48           		pha
+   355 00:7D72: DA           		phx
+   356 00:7D73: 5A           		phy
+   357                        
+   358                        		setas
++  358 00:7D74: E2 20                SEP #$20        ; set A short 
++  358                                LONGA OFF
+   359                        
+  Fri Apr 17 2020 19:59                                                                                                Page 9
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 IRQ - Interrupt Handler Code"
+
+   360                        		setal
++  360 00:7D76: C2 20                REP #$20        ; set A long 
++  360                                LONGA ON
+   361                        		XREF	~~COPHandler
+   362 00:7D78: 22 xx xx xx  		jsl		~~COPHandler
+   363                        
+   364                        		setal
++  364 00:7D7C: C2 20                REP #$20        ; set A long 
++  364                                LONGA ON
+   365                        		
+   366 00:7D7E: 7A           		ply
+   367 00:7D7F: FA           		plx
+   368 00:7D80: 68           		pla
+   369 00:7D81: 2B           		pld		; restore Direct Page Reg
+   370 00:7D82: AB           		plb		; Restore Data Bank
+   371                        
+   372 00:7D83: 40           		RTI
+   373                        ;************************************************
+   374                        ; Bad Vectors
+   375                        ;************************************************
+   376                        
+   377                        Undefined_IRQ:
+   378 00:7D84: EA           		nop
+   379 00:7D85: 80 FD        		bra Undefined_IRQ
+   380                        
+   381                        
+   382                        ;WDCMON_START	EQU	$7E00
+   383                        ;ROMSPACE EQU WDCMON_START-*  ;gives space left in the ROM BEFORE TABLES;
+   384                        ;	IF ROMSPACE<0
+   385                        		;EXIT         "Not Enough Memory for WDC_Cstartup_02.ASM - bumping into WDCMON! ! ! ! ! 
+                    ! ! ! ! ! ! !"
+   386                        	;ENDIF
+   387                        
+   388                        ;        ENDS
+   389                        
+   390                        
+   391                                XREF  _BEG_DATA
+   392                                XREF  _END_DATA
+   393                                XREF  _ROM_BEG_DATA
+   394                                XREF  _BEG_UDATA
+   395                                XREF  _END_UDATA
+   396                        
+   397                        
+   398 00:7D87:              	ends
+   399                        
+   400                        
+   401                        ;        DATA
+   402                        ;        XDEF  ~~heap_start,~~heap_end
+   403                        ;~~heap_start:
+   404                        ;        WORD  $6000
+   405                        ;~~heap_end:
+   406                        ;        WORD  $7CF0
+   407                        ;
+   408                        ;        ENDS
+   409                        
+  Fri Apr 17 2020 19:59                                                                                                Page 10
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 IRQ - Interrupt Handler Code"
+
+   410                        
+   411                                sttl "WDC_CStartup_816 Shadow Vector Defines"
+   412                        	.page
+   413                        
+  Fri Apr 17 2020 19:59                                                                                                Page 11
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Shadow Vector Defines"
+
+   414                        ;***************************************************************************
+   415                        ;        $7E00 - $7FFF New Expanded Shadow Vector Section Definitions
+   416                        ;***************************************************************************
+   417                        ;***************************************************************************
+   418                        ;***************************************************************************
+   419                        
+   420                        ;	hvectors:	section		; the real reset and interrupt vectors
+   421                        ;
+   422                        ;					;65C816 Vectors
+   423                        ;	org	$18ffe4
+   424                        ;					;Status bit E = 0 (Native mode);
+   425                        ;		dw	Undefined_IRQ	; $FFE4 - COP(816)
+   426                        ;		dw	Undefined_IRQ	; $FFE6 - BRK(816)
+   427                        ;		dw	Undefined_IRQ	; $FFE8 - ABORT(816)
+   428                        ;		dw	Undefined_IRQ	; $FFEA - NMI(816)
+   429                        ;		dw	Undefined_IRQ	; $FFEC - IRQRVD(816)
+   430                        ;		dw	IRQ		; $FFEE - IRQ(816)
+   431                        ;					;Status bit E = 1 (Emulation mode)
+   432                        ;		dw	Undefined_IRQ	; $FFF0 - IRQRVD(816)
+   433                        ;		dw	Undefined_IRQ	; $FFF2 - IRQRVD(816)
+   434                        ;		dw	Undefined_IRQ	; $FFF4 - COP(816Emulation)
+   435                        ;		dw	Undefined_IRQ	; $FFF6 - IRQRVD(816Emulation)
+   436                        ;		dw	Undefined_IRQ	; $FFF8 - ABORT(816Emulation)
+   437                        ;
+   438                        ;					; Common Vectors for all CPUs
+   439                        ;		dw	Undefined_IRQ	; $FFFA -  NMIRQ (ALL)
+   440                        ;		dw	START		; $FFFC -  RESET (ALL)
+   441                        ;		dw	Undefined_IRQ	; $FFFE -  IRQBRK (ALL)
+   442                        ;
+   443                        ;		ends
+   444                        
+   445                        
+   446                        	        
+   447                        
+   448                        
+   449                        
+   450                        ****************************************************************
+   451                        *                                                              *
+   452                        *   This section defines the interrupt and reset vectors.      *
+   453                        *      The reset vectors always start at FFE4 in bank 0.       *
+   454                        *      Since the vectors are only 16 bits, they must point     *
+   455                        *      into bank 0. Replace the "Undefined_IRQ" with any       *
+   456                        *      routines that handle that interrupt.                    *
+   457                        *                                                              *
+   458                        ****************************************************************
+   459                        
+   460                        
+   461                        	vectors:	section		; the real reset and interrupt vectors
+   462                        
+   463                        					;65C816 Vectors
+   464                        		org	$ffe4
+   465                        					;Status bit E = 0 (Native mode)
+   466 00:FFE4: 6D 7D        		dw	COP				; $FFE4 - COP(816)
+   467 00:FFE6: 56 7D        		dw	BRK		     	; $FFE6 - BRK(816)
+   468 00:FFE8: 84 7D        		dw	Undefined_IRQ	; $FFE8 - ABORT(816)
+  Fri Apr 17 2020 19:59                                                                                                Page 12
+
+    "fxos 'C' Startup Program V 1.00 for Large Model W65C816 - fxloader.asm"
+    "WDC_CStartup_816 Shadow Vector Defines"
+
+   469 00:FFEA: 55 7D        		dw	NMI				; $FFEA - NMI(816)
+   470 00:FFEC: 84 7D        		dw	Undefined_IRQ	; $FFEC - IRQRVD(816)
+   471 00:FFEE: 3E 7D        		dw	IRQ		; $FFEE - IRQ(816)
+   472                        					;Status bit E = 1 (Emulation mode)
+   473 00:FFF0: 84 7D        		dw	Undefined_IRQ	; $FFF0 - IRQRVD(816)
+   474 00:FFF2: 84 7D        		dw	Undefined_IRQ	; $FFF2 - IRQRVD(816)
+   475 00:FFF4: 84 7D        		dw	Undefined_IRQ	; $FFF4 - COP(816Emulation)
+   476 00:FFF6: 84 7D        		dw	Undefined_IRQ	; $FFF6 - IRQRVD(816Emulation)
+   477 00:FFF8: 84 7D        		dw	Undefined_IRQ	; $FFF8 - ABORT(816Emulation)
+   478                        
+   479                        					; Common Vectors for all CPUs
+   480 00:FFFA: 84 7D        		dw	Undefined_IRQ	; $FFFA -  NMIRQ (ALL)
+   481 00:FFFC: 00 7D        		dw	START		; $FFFC -  RESET (ALL)
+   482 00:FFFE: 84 7D        		dw	Undefined_IRQ	; $FFFE -  IRQBRK (ALL)
+   483                        
+   484 01:0000:              		ends
+   485                        
+   486                        
+   487                        	        end
+
+
+      Lines assembled: 511
+      Errors: 0

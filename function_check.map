@@ -1,0 +1,101 @@
+Section CODE:
+	00010000 _BEG_CODE
+	000102c5 ~~disk_initialize
+	0001031d ~~disk_status
+	00010350 ~~disk_read
+	00010437 ~~disk_write
+	0001050e ~~disk_ioctl
+	000106c8 ~~IRQHandler
+	000107c4 ~~COPHandler
+	000107d4 ~~BRKHandler
+	00010861 ~~test_diskio
+	000113b2 ~~main
+	000114d9 ~~_abort
+	000114e9 ~~close
+	00011506 ~~creat
+	00011523 ~~lseek
+	00011544 ~~open
+	00011561 ~~read
+	0001157e ~~unlink
+	0001159b ~~write
+	00011690 ~~isatty
+	000116bc ~~x
+	000116da ~~clearTextScreen
+	00011742 ~~putTextXY
+	000117fb ~~setEGATextPalette
+	000119cb ~~enableTextLayer
+	000119e9 ~~setBorder
+	00011a7f ~~printf
+	00011ac7 ~~_format
+	000123a3 ~~_ldtoa
+	000127e3 dadc
+	000127d9 ~~~dadc
+	00012950 ~~~dcmp
+	00012a00 ~~~ddiv
+	00012b51 ~~~dfix
+	00012bdd ~~~dflt
+	00012c40 ~~~dmul
+	00012d65 ~~~dneg
+	00012d91 ~~~dsbc
+	00012da6 doNorm
+	00012e86 ~~_flsbuf
+	00013130 ~~_getbuf
+	000131f9 ~~malloc
+	000132d6 ~~memset
+	00013302 ~~sbrk
+	00013350 ~~strlen
+	0001336e ~~tolower
+	00013389 ~~~asl
+	00013391 ~~~asr
+	000133a2 ~~~div
+	000133c6 ~~~lasr
+	00013404 ~~~llsr
+	00013434 ~~~ludv
+	0001344e ~~~lumd
+	00013463 ~~~mod
+	00013487 ~~~mul
+	000134c8 ~~~swt
+	000134e9 ~~~udv
+	0001351d ~~_closeall
+	0001355d ~~fclose
+	00013660 ~~fflush
+	000136dd ~~free
+	000137a6 ~~strcpy
+	000137cb ~~~comdiv
+	0001380c ~~~umd
+	00013812 _END_CODE
+
+Section DATA:
+	00020000 _BEG_DATA
+	00020000 ~~spinnerState1
+	00020001 ~~spinnerState2
+	0002000e ~~heap_start
+	00020012 ~~heap_end
+	00020016 ~~spinner
+	0002001e ~~spinnerState
+	0002001f ~~spinnerStateDisk
+	00020829 FltErr
+	0002082b ~~_ctype
+	0002092c ~~_iob
+	00020ac0 _END_DATA
+
+Section UDATA:
+	00020ac0 _BEG_UDATA
+	00020ac4 ~~buff
+	000214c4 ~~_heap_top
+	000214c8 ~~_close_stdio
+	000214cc ~~_mem_start
+	000214d0 _END_UDATA
+
+Section startup:
+	00007d00 _BEG_STARTUP
+	00007d87 _END_STARTUP
+
+Section vectors:
+	0000ffe4 _BEG_VECTORS
+	00010000 _END_VECTORS
+
+ABSOLUTES:
+	00007d3c ~~_exit
+	00007d3e IRQ
+
